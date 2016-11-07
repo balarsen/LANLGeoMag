@@ -346,7 +346,14 @@ int main(void) {
 
     
   Lgm_PrintElapsedTime( &tInfo );
-    
+
+  free(sN);
+  free(PxN);
+  free(PyN);
+  free(PzN);
+  free(BmagN);
+  free(pVelarr);
+  
   }
   
   Lgm_PrintElapsedTime( &tInfo );
