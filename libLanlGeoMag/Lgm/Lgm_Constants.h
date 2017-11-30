@@ -109,7 +109,10 @@
 #define Joules_Per_eV        (1.60217648740e-19)        // 1 eV = 1.60217648740e-19 Joules
 #endif
 
-
+#ifndef LGM_kg_to_MeV
+#define LGM_kg_to_MeV        (1.0/(LGM_c*LGM_c*Joules_Per_eV/1e6))  // mult by to get MeV from kg
+#endif
+  
 
 
 #endif
