@@ -199,8 +199,8 @@ int main(){
     Lgm_MagModelInfo    *mInfo = Lgm_InitMagInfo();
     
 
-    NX     = 25; LX_MIN = -30.0; LX_MAX =  30.0;
-    NY     = 25; LY_MIN = -30.0; LY_MAX =  30.0;
+    NX     = 100; LX_MIN = -30.0; LX_MAX =  30.0;
+    NY     = 100; LY_MIN = -30.0; LY_MAX =  30.0;
 
 
 
@@ -219,17 +219,16 @@ int main(){
 
     Date = 20120814;
     UTC  = 2.0 + 3.0/60.0 + 30.0/3600.0;
+    Date = 20120910;
+    UTC  = 3.0 + 0.0/60.0 + 0.0/3600.0;
     JD = Lgm_Date_to_JD( Date, UTC, mInfo->c );
     Lgm_Set_Coord_Transforms( Date, UTC, mInfo->c );
     printf("Tilt = %g\n", mInfo->c->psi*DegPerRad );
 //exit(0);
-    Lgm_get_QinDenton_at_JD( JD, &p, 1 );
+    Lgm_get_QinDenton_at_JD( JD, &p, 1, 1 );
     Lgm_set_QinDenton( &p, mInfo );
 
-    Lgm_MagModelInfo_Set_MagModel( LGM_IGRF, LGM_EXTMODEL_T89, mInfo );
     Lgm_MagModelInfo_Set_MagModel( LGM_IGRF, LGM_EXTMODEL_TS04, mInfo );
-Lgm_MagModelInfo_Set_MagModel( LGM_IGRF, LGM_EXTMODEL_TS07, mInfo );
-Lgm_SetCoeffs_TS07( Date, UTC, &mInfo->TS07_Info );
 
 Lgm_MagModelInfo_Set_MagModel( LGM_IGRF, LGM_EXTMODEL_T02, mInfo );
     Lgm_MagModelInfo_Set_MagModel( LGM_IGRF, LGM_EXTMODEL_OP77, mInfo );
@@ -238,8 +237,24 @@ Lgm_MagModelInfo_Set_MagModel( LGM_IGRF, LGM_EXTMODEL_T02, mInfo );
     Lgm_MagModelInfo_Set_MagModel( LGM_IGRF, LGM_EXTMODEL_TU82, mInfo );
     Lgm_MagModelInfo_Set_MagModel( LGM_IGRF, LGM_EXTMODEL_T96, mInfo );
     Lgm_MagModelInfo_Set_MagModel( LGM_IGRF, LGM_EXTMODEL_T01S, mInfo );
+
+    Lgm_MagModelInfo_Set_MagModel( LGM_IGRF, LGM_EXTMODEL_T89, mInfo );
+Lgm_MagModelInfo_Set_MagModel( LGM_IGRF, LGM_EXTMODEL_TS07, mInfo );
+Lgm_SetCoeffs_TS07( Date, UTC, &mInfo->TS07_Info );
+Lgm_SetTabulatedBessel_TS07( TRUE, &mInfo->TS07_Info );
+
+
+
+
+
+char *s1, *s2, *s3, *s4;
+Lgm_Get_ExtMagModelStrings( &s1, &s2, &s3, &s4, mInfo );
+printf( "s1 = %s\n", s1 );
+printf( "s2 = %s\n", s2 );
+printf( "s3 = %s\n", s3 );
+printf( "s4 = %s\n", s4 );
     
-    Lgm_Set_Open_Limits( mInfo, -60.0, 30.0, -40.0, 40.0, -40.0, 40.0 );
+    //Lgm_Set_Open_Limits( mInfo, -60.0, 30.0, -40.0, 40.0, -40.0, 40.0 );
 
 
     LGM_ARRAY_2D( Image, NX, NY, double );
@@ -248,21 +263,24 @@ Lgm_MagModelInfo_Set_MagModel( LGM_IGRF, LGM_EXTMODEL_T02, mInfo );
     LGM_ARRAY_2D( ImageYZ15, YZ_NY, YZ_NZ, double );
     LGM_ARRAY_2D( ImageYZ30, YZ_NY, YZ_NZ, double );
     LGM_ARRAY_2D( ImageYZ45, YZ_NY, YZ_NZ, double );
-mInfo->SavePoints = TRUE;
-mInfo->fp = fopen("FieldLines.txt", "w");
-mInfo->SavePoints = FALSE;
+//mInfo->SavePoints = TRUE;
+//mInfo->fp = fopen("FieldLines.txt", "w");
+//mInfo->SavePoints = FALSE;
 
     { // BEGIN PARALLEL EXECUTION
-//        #pragma omp parallel private(ii,jj,x,y,j,GeodLat,GeodLong,u,v,v1,v2,v3,ww,ww2,Flag,mInfo2)
-//        #pragma omp for schedule(dynamic, 1)
+        #pragma omp parallel private(ii,jj,x,y,j,GeodLat,GeodLong,u,v,v1,v2,v3,ww,ww2,Flag,mInfo2)
+        #pragma omp for schedule(dynamic, 1)
         for ( i=0; i<NX; i++ ) {
             x = (LX_MAX-LX_MIN) * i / ((double)(NX-1)) + LX_MIN;
+
 
             mInfo2 = Lgm_CopyMagInfo( mInfo );
 
             printf("i=%d\n", i);
             
-            for ( j=0; j<NY; j++ ) {
+            //for ( j=0; j<NY; j++ ) {
+            for ( j=0; j<NY/2; j++ ) {
+            //for ( j=NY/2; j<=NY/2; j++ ) {
                 y = (LY_MAX-LY_MIN) * j / ((double)(NY-1)) + LY_MIN;
 
 
@@ -274,27 +292,27 @@ mInfo->SavePoints = FALSE;
                 R    = 120.0/Re + 1.0;
                 MLAT = 90.0 - sqrt( x*x + y*y );
                 MLT  = atan2( y, x )*DegPerRad/15.0+12.0;
-                Lgm_R_MLAT_MLT_to_CDMAG( R, MLAT, MLT, &v, mInfo->c );
-                Lgm_Convert_Coords( &v, &u, CDMAG_TO_GSM, mInfo->c );
+                Lgm_R_MLAT_MLT_to_CDMAG( R, MLAT, MLT, &v, mInfo2->c );
+                Lgm_Convert_Coords( &v, &u, CDMAG_TO_GSM, mInfo2->c );
 
                 v3.x = v3.y = v3.z = -1e31;
                 Flag = Lgm_Trace( &u, &v1, &v2, &v3, GeodHeight, 1e-7, 1e-7, mInfo2 );
 
 v22 = v2;
 
-                Lgm_Convert_Coords( &v2, &w, GSM_TO_SM, mInfo->c );
+                Lgm_Convert_Coords( &v2, &w, GSM_TO_SM, mInfo2->c );
                 if ( w.x > 0.0 ) Lgm_TraceToSMEquat( &v2, &v3, 1e-6, mInfo2 );
 
-                Lgm_Convert_Coords( &v3, &w, GSM_TO_SM, mInfo->c );
+                Lgm_Convert_Coords( &v3, &w, GSM_TO_SM, mInfo2->c );
                 EnhancedFlag = ClassifyFL_Enhanced2( Flag, &v1, &v2, &v3, mInfo2 );
                 Image[i][j] = (double)EnhancedFlag;
                 if (Image[i][j] < 0.0) Image[i][j] = 8.0;
 
 
-fprintf( mInfo->fp,  "Type: %d\n", EnhancedFlag );
-mInfo2->SavePoints = TRUE;
-Lgm_TraceToEarth( &v22, &v4, GeodHeight, -1.0, 1e-7, mInfo2 );
-mInfo2->SavePoints = FALSE;
+//fprintf( mInfo2->fp,  "Type: %d\n", EnhancedFlag );
+//mInfo2->SavePoints = TRUE;
+//Lgm_TraceToEarth( &v22, &v4, GeodHeight, -1.0, 1e-7, mInfo2 );
+//mInfo2->SavePoints = FALSE;
 
 
 
@@ -307,7 +325,7 @@ mInfo2->SavePoints = FALSE;
                     jj = (v3.x - EQ_XMIN)/(EQ_XMAX-EQ_XMIN) * (EQ_NX-1);
                     //printf("ii, jj = %d %d\n", ii, jj );
                     if ( (ii>=0)&&(ii<EQ_NY)&&(jj>=0)&&(jj<EQ_NX) ) {
-                        ImageEq[ii][jj] = Image[i][j];
+                        ImageEq[EQ_NY-ii][jj] = Image[i][j];
                     }
                 }
 
@@ -398,28 +416,28 @@ mInfo2->SavePoints = FALSE;
                 MLAT = 90.0 - sqrt( x*x + y*y );
                 MLAT *= -1.0;
                 MLT  = atan2( y, x )*DegPerRad/15.0+12.0;
-                Lgm_R_MLAT_MLT_to_CDMAG( R, MLAT, MLT, &v, mInfo->c );
-                Lgm_Convert_Coords( &v, &u, CDMAG_TO_GSM, mInfo->c );
+                Lgm_R_MLAT_MLT_to_CDMAG( R, MLAT, MLT, &v, mInfo2->c );
+                Lgm_Convert_Coords( &v, &u, CDMAG_TO_GSM, mInfo2->c );
 
                 v3.x = v3.y = v3.z = -1e31;
                 Flag = Lgm_Trace( &u, &v1, &v2, &v3, GeodHeight, 1e-7, 1e-7, mInfo2 );
 v11 = v1;
 
-                Lgm_Convert_Coords( &v2, &w, GSM_TO_SM, mInfo->c );
+                Lgm_Convert_Coords( &v2, &w, GSM_TO_SM, mInfo2->c );
                 if ( w.x > 0.0 ) Lgm_TraceToSMEquat( &v2, &v3, 1e-6, mInfo2 );
 
 
-                Lgm_Convert_Coords( &v3, &w, GSM_TO_SM, mInfo->c );
+                Lgm_Convert_Coords( &v3, &w, GSM_TO_SM, mInfo2->c );
                 EnhancedFlag = ClassifyFL_Enhanced2( Flag, &v1, &v2, &v3, mInfo2 );
                 ImageSouth[i][j] = (double)EnhancedFlag;
                 if (ImageSouth[i][j] < 0.0) ImageSouth[i][j] = 8.0;
 
 
 printf( "u = %g %g %g   Type: %d\n", u.x, u.y, u.z, EnhancedFlag );
-fprintf( mInfo->fp,  "Type: %d\n", u.x, u.y, u.z, EnhancedFlag );
-mInfo2->SavePoints = TRUE;
-Lgm_TraceToEarth( &v11, &v4, GeodHeight, 1.0, 1e-7, mInfo2 );
-mInfo2->SavePoints = FALSE;
+//fprintf( mInfo2->fp,  "Type: %d\n", u.x, u.y, u.z, EnhancedFlag );
+//mInfo2->SavePoints = TRUE;
+//Lgm_TraceToEarth( &v11, &v4, GeodHeight, 1.0, 1e-7, mInfo2 );
+//mInfo2->SavePoints = FALSE;
 
                 /*
                  *  Add point to the Equatorial plane image.
@@ -429,7 +447,7 @@ mInfo2->SavePoints = FALSE;
                     jj = (v3.x - EQ_XMIN)/(EQ_XMAX-EQ_XMIN) * (EQ_NX-1);
                     //printf("ii, jj = %d %d\n", ii, jj );
                     if ( (ii>=0)&&(ii<EQ_NY)&&(jj>=0)&&(jj<EQ_NX) ) {
-                        ImageEq[ii][jj] = ImageSouth[i][j];
+                        ImageEq[EQ_NY-ii][jj] = ImageSouth[i][j];
                     }
                 }
 
@@ -512,20 +530,6 @@ mInfo2->SavePoints = FALSE;
 
                 } 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
             }
 
             Lgm_FreeMagInfo( mInfo2 );
@@ -535,12 +539,18 @@ mInfo2->SavePoints = FALSE;
 
 
 
-    DumpImage( "ImageNorth_T89", NX, NY, Image );
-    DumpImage( "ImageSouth_T89", NX, NY, ImageSouth );
-    DumpImage( "ImageEq_T89", EQ_NX, EQ_NY, ImageEq );
-    DumpImage( "ImageYZ15_T89", YZ_NY, YZ_NZ, ImageYZ15 );
-    DumpImage( "ImageYZ30_T89", YZ_NY, YZ_NZ, ImageYZ30 );
-    DumpImage( "ImageYZ45_T89", YZ_NY, YZ_NZ, ImageYZ45 );
+    char Basename[256];
+    sprintf( Basename, "ImageNorth_%s", s1 ); DumpImage( Basename, NX, NY, Image );
+    sprintf( Basename, "ImageSouth_%s", s1 ); DumpImage( Basename, NX, NY, ImageSouth );
+    sprintf( Basename, "ImageEq_%s",    s1 ); DumpImage( Basename, EQ_NX, EQ_NY, ImageEq );
+    sprintf( Basename, "ImageYZ15_%s",  s1 ); DumpImage( Basename, YZ_NY, YZ_NZ, ImageYZ15 );
+    sprintf( Basename, "ImageYZ30_%s",  s1 ); DumpImage( Basename, YZ_NY, YZ_NZ, ImageYZ30 );
+    sprintf( Basename, "ImageYZ45_%s",  s1 ); DumpImage( Basename, YZ_NY, YZ_NZ, ImageYZ45 );
+
+    char Command[256];
+    sprintf( Command, "sed -e \"s/TEMPLATE/%s/\" TEMPLATE_Mapping.svg > %s_Mapping.svg", s1, s1 );
+    system( Command );
+
     LGM_ARRAY_2D_FREE( Image );
     LGM_ARRAY_2D_FREE( ImageSouth );
     LGM_ARRAY_2D_FREE( ImageEq );
